@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>goodment 출석부</title>
+    <title>goodmento 출석부</title>
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -24,8 +24,9 @@
                     class="w-20 h-20 bg-pink-500 rounded-full flex items-center justify-center mb-4 shadow-lg text-white text-3xl">
                     <i class="fas fa-clipboard-check"></i>
                 </div>
-                <h1 class="text-3xl font-extrabold text-gray-800 mb-1">goodment 출석부</h1>
-                <p class="text-pink-500 font-medium mb-10 text-sm tracking-wide uppercase">goodmento-school-check</p>
+                <h1 class="text-3xl font-extrabold text-gray-800 mb-1">goodmento 출석부</h1>
+                <p class="text-pink-500 font-medium mb-10 text-sm tracking-wide uppercase">
+                    cnation-goodmento-school-check</p>
 
                 <div class="w-full space-y-4">
                     <button onclick="openAttendance('학교1(CCM)')"
@@ -70,17 +71,39 @@
 
             <div class="p-4 bg-white border-t border-gray-100 pb-8">
                 <button onclick="saveAllAttendance()"
-                    class="w-full py-3.5 bg-pink-500 text-white font-bold rounded-xl shadow-md hover:bg-pink-600 transition flex items-center justify-center gap-2">
+                    class="w-full py-3.5 bg-pink-500 text-white font-bold rounded-xl shadow-md hover:bg-pink-600 transition flex items-center justify-center gap-2 mb-6">
                     <i class="fas fa-save"></i> 전체 출석 저장
                 </button>
 
-                <div class="mt-6 pt-6 border-t border-gray-100">
+                <div class="pt-6 border-t border-gray-100">
                     <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">신규 학생 등록</h3>
-                    <div class="flex gap-2">
-                        <input type="text" id="newStudentName" placeholder="학생 이름 입력"
+                    <div class="flex gap-2 mb-2">
+                        <input type="number" id="newStudentNum" placeholder="번호"
+                            class="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400 text-center">
+                        <input type="text" id="newStudentName" placeholder="이름 (필수)"
                             class="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pink-400">
-                        <button onclick="addStudent()"
-                            class="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2 rounded-xl text-sm font-bold shadow transition">추가</button>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <div class="flex-1 bg-pink-50 border border-dashed border-pink-200 rounded-xl p-2 relative">
+                            <input type="file" id="newStudentPhoto" accept="image/*"
+                                class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-xl file:border-0 file:bg-white file:text-pink-600 file:shadow-sm">
+                        </div>
+                        <button onclick="addStudent()" id="addStudentBtn"
+                            class="bg-gray-800 hover:bg-gray-900 text-white px-5 py-3 rounded-xl text-sm font-bold shadow transition shrink-0">추가</button>
+                    </div>
+                    <p id="uploadStatus" class="text-xs text-center text-pink-500 font-bold hidden mt-2">데이터 업로드 중입니다...
+                        ⏳</p>
+                </div>
+
+                <div class="mt-6 pt-6 border-t border-gray-100">
+                    <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">학생 삭제</h3>
+                    <div class="flex gap-2">
+                        <select id="deleteStudentSelect"
+                            class="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-red-400 text-gray-700">
+                            <option value="">삭제할 학생 선택</option>
+                        </select>
+                        <button onclick="deleteStudent()"
+                            class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow transition">삭제</button>
                     </div>
                 </div>
             </div>
@@ -133,6 +156,19 @@
             </div>
 
             <div class="p-5 flex-1 overflow-y-auto">
+
+                <div id="studentProfileContainer"
+                    class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hidden mb-4 flex items-center gap-4">
+                    <div id="profileImage"
+                        class="w-16 h-16 rounded-full overflow-hidden shrink-0 shadow-sm border border-gray-100 flex items-center justify-center bg-indigo-50 text-indigo-300">
+                        <i class="fas fa-user text-2xl"></i>
+                    </div>
+                    <div>
+                        <p id="profileNumber" class="text-xs text-indigo-400 font-bold mb-0.5"></p>
+                        <p id="profileName" class="text-xl font-bold text-gray-800"></p>
+                    </div>
+                </div>
+
                 <div id="statContainer" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hidden mb-6">
                     <h3 class="font-bold text-gray-800 mb-4 text-center">출결 요약</h3>
                     <div class="flex justify-around text-center">
@@ -160,7 +196,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, where, getDocs, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // ★ Storage 임포트 (사진 업로드용) ★
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCTwOAC_LrrKH8CKepUOTf0pyd9qRv4y_8",
@@ -174,14 +212,44 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const storage = getStorage(app);
 
+        // 네이밍 규칙 적용
         const STUDENTS_COL = "cnation-goodmento-students";
         const ATTENDANCE_COL = "cnation-goodmento-attendance";
 
         let currentSchool = "";
         let currentStudents = [];
+        let manageStudentsData = []; // 학생 관리 드롭다운 데이터 캐싱용
 
         document.getElementById('attDate').value = new Date().toISOString().split('T')[0];
+
+        // 썸네일 생성 함수 
+        function generateThumbnail(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const max_size = 200;
+                        if (width > height) {
+                            if (width > max_size) { height *= max_size / width; width = max_size; }
+                        } else {
+                            if (height > max_size) { width *= max_size / height; height = max_size; }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.6);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
 
         window.openAttendance = (school) => {
             currentSchool = school;
@@ -198,6 +266,7 @@
             document.getElementById('manSchool').value = "";
             document.getElementById('manStudent').innerHTML = '<option value="">학생 선택 (학교를 먼저 선택하세요)</option>';
             document.getElementById('statContainer').classList.add('hidden');
+            document.getElementById('studentProfileContainer').classList.add('hidden');
             document.getElementById('memoContainer').innerHTML = '';
             toggleCustomDate();
         };
@@ -210,11 +279,15 @@
 
         window.loadAttendanceData = async () => {
             const listContainer = document.getElementById('studentListContainer');
+            const deleteSelect = document.getElementById('deleteStudentSelect');
+
             listContainer.innerHTML = '<p class="text-center text-gray-400 py-10"><i class="fas fa-spinner fa-spin mr-2"></i>학생 목록을 불러오는 중...</p>';
+            deleteSelect.innerHTML = '<option value="">삭제할 학생 선택</option>';
 
             const selectedDate = document.getElementById('attDate').value;
 
             try {
+                // 단발성 호출 (getDocs)
                 const studentQuery = query(collection(db, STUDENTS_COL), where("school", "==", currentSchool));
                 const studentSnap = await getDocs(studentQuery);
                 currentStudents = [];
@@ -237,28 +310,42 @@
                     return;
                 }
 
-                currentStudents.sort((a, b) => a.name.localeCompare(b.name));
+                // ★ 번호(number) 순서대로 오름차순 정렬 ★
+                currentStudents.sort((a, b) => a.number - b.number);
 
                 currentStudents.forEach(student => {
                     const record = todayAttendance[student.id] || { status: '출석', memo: '' };
+                    deleteSelect.innerHTML += `<option value="${student.id}">${student.number}번 ${student.name}</option>`;
+
+                    // 썸네일 이미지가 있으면 보여주고, 없으면 기본 파스텔 아바타
+                    let photoHtml = student.thumbnailUrl
+                        ? `<img src="${student.thumbnailUrl}" class="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-100 shrink-0" alt="photo">`
+                        : `<div class="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center text-pink-300 shadow-sm border border-pink-100 shrink-0"><i class="fas fa-user text-lg"></i></div>`;
 
                     const html = `
                         <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100" data-student-id="${student.id}">
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="font-bold text-gray-800 text-lg">${student.name}</span>
-                                <div class="flex bg-gray-100 rounded-lg p-1 gap-1">
-                                    <label class="cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '출석' ? 'bg-green-500 text-white' : 'text-gray-500 hover:bg-gray-200'}">
-                                        <input type="radio" name="status_${student.id}" value="출석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '출석' ? 'checked' : ''}> 출석
-                                    </label>
-                                    <label class="cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '지각' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-200'}">
-                                        <input type="radio" name="status_${student.id}" value="지각" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '지각' ? 'checked' : ''}> 지각
-                                    </label>
-                                    <label class="cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '결석' ? 'bg-red-500 text-white' : 'text-gray-500 hover:bg-gray-200'}">
-                                        <input type="radio" name="status_${student.id}" value="결석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '결석' ? 'checked' : ''}> 결석
-                                    </label>
+                            <div class="flex items-center gap-3 mb-3">
+                                ${photoHtml}
+                                
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <span class="text-xs font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">${student.number}번</span>
+                                        <span class="font-bold text-gray-800 text-lg">${student.name}</span>
+                                    </div>
+                                    <div class="flex bg-gray-50 rounded-lg p-1 gap-1">
+                                        <label class="flex-1 text-center cursor-pointer px-1 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '출석' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}">
+                                            <input type="radio" name="status_${student.id}" value="출석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '출석' ? 'checked' : ''}> 출석
+                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer px-1 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '지각' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}">
+                                            <input type="radio" name="status_${student.id}" value="지각" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '지각' ? 'checked' : ''}> 지각
+                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer px-1 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '결석' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}">
+                                            <input type="radio" name="status_${student.id}" value="결석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '결석' ? 'checked' : ''}> 결석
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                            <input type="text" id="memo_${student.id}" value="${record.memo}" placeholder="특이사항 메모..." class="w-full border-b border-dashed border-gray-300 py-1 text-sm text-gray-600 focus:outline-none focus:border-pink-400 bg-transparent">
+                            <input type="text" id="memo_${student.id}" value="${record.memo}" placeholder="특이사항 메모..." class="w-full border-b border-dashed border-gray-300 py-1 text-sm text-gray-600 focus:outline-none focus:border-pink-400 bg-transparent mt-1">
                         </div>
                     `;
                     listContainer.insertAdjacentHTML('beforeend', html);
@@ -273,31 +360,100 @@
         window.updateRadioStyle = (radio) => {
             const labels = radio.closest('div').querySelectorAll('label');
             labels.forEach(l => {
-                l.className = 'cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200';
+                l.className = 'flex-1 text-center cursor-pointer px-1 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200';
             });
 
-            if (radio.value === '출석') radio.parentElement.classList.add('bg-green-500', 'text-white');
-            if (radio.value === '지각') radio.parentElement.classList.add('bg-orange-500', 'text-white');
-            if (radio.value === '결석') radio.parentElement.classList.add('bg-red-500', 'text-white');
+            if (radio.value === '출석') radio.parentElement.classList.add('bg-green-500', 'text-white', 'shadow-sm');
+            if (radio.value === '지각') radio.parentElement.classList.add('bg-orange-500', 'text-white', 'shadow-sm');
+            if (radio.value === '결석') radio.parentElement.classList.add('bg-red-500', 'text-white', 'shadow-sm');
             radio.parentElement.classList.remove('text-gray-500', 'hover:bg-gray-200');
         };
 
         window.addStudent = async () => {
+            const numInput = document.getElementById('newStudentNum');
             const nameInput = document.getElementById('newStudentName');
+            const photoInput = document.getElementById('newStudentPhoto');
+            const btn = document.getElementById('addStudentBtn');
+            const statusText = document.getElementById('uploadStatus');
+
+            const number = numInput.value.trim();
             const name = nameInput.value.trim();
-            if (!name) { alert("학생 이름을 입력해주세요."); return; }
+            const photoFile = photoInput.files[0];
+
+            if (!number || !name) {
+                alert("학생 번호와 이름을 모두 입력해주세요.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            statusText.classList.remove('hidden');
 
             try {
+                let imageUrl = "";
+                let thumbnailUrl = "";
+
+                // 사진이 첨부되었을 경우 원본/썸네일 분리 저장
+                if (photoFile) {
+                    const timeStr = Date.now();
+
+                    // 1. 원본 저장
+                    const originalImageRef = ref(storage, `${STUDENTS_COL}/images/${timeStr}_${photoFile.name}`);
+                    await uploadBytes(originalImageRef, photoFile);
+                    imageUrl = await getDownloadURL(originalImageRef);
+
+                    // 2. 썸네일 생성 및 저장
+                    const thumbnailBlob = await generateThumbnail(photoFile);
+                    const thumbnailRef = ref(storage, `${STUDENTS_COL}/thumbnails/${timeStr}_${photoFile.name}.jpg`);
+                    await uploadBytes(thumbnailRef, thumbnailBlob);
+                    thumbnailUrl = await getDownloadURL(thumbnailRef);
+                }
+
+                // DB에 정보 저장 (number는 정렬을 위해 숫자형으로 변환)
                 await addDoc(collection(db, STUDENTS_COL), {
                     school: currentSchool,
+                    number: Number(number),
                     name: name,
+                    imageUrl: imageUrl,
+                    thumbnailUrl: thumbnailUrl,
                     createdAt: serverTimestamp()
                 });
+
+                numInput.value = '';
                 nameInput.value = '';
-                alert(`${name} 학생이 추가되었습니다!`);
+                photoInput.value = '';
+                alert(`${name} 학생이 성공적으로 추가되었습니다!`);
                 loadAttendanceData();
             } catch (error) {
-                alert("추가 실패. 네트워크를 확인해주세요.");
+                console.error(error);
+                alert("학생 추가 중 오류가 발생했습니다.");
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+                statusText.classList.add('hidden');
+            }
+        };
+
+        // 학생 삭제
+        window.deleteStudent = async () => {
+            const select = document.getElementById('deleteStudentSelect');
+            const studentId = select.value;
+            const studentName = select.options[select.selectedIndex]?.text;
+
+            if (!studentId) {
+                alert("삭제할 학생을 선택해주세요.");
+                return;
+            }
+
+            if (confirm(`[${studentName}] 학생을 정말 삭제 하시겠어요? (삭제 후 복구 불가)`)) {
+                try {
+                    await deleteDoc(doc(db, STUDENTS_COL, studentId));
+                    alert(`${studentName} 정보가 삭제되었습니다.`);
+                    loadAttendanceData();
+                } catch (error) {
+                    console.error(error);
+                    alert("삭제 중 오류가 발생했습니다.");
+                }
             }
         };
 
@@ -346,6 +502,8 @@
             const school = document.getElementById('manSchool').value;
             const studentSelect = document.getElementById('manStudent');
             studentSelect.innerHTML = '<option value="">학생을 불러오는 중...</option>';
+            document.getElementById('studentProfileContainer').classList.add('hidden');
+            document.getElementById('statContainer').classList.add('hidden');
 
             if (!school) {
                 studentSelect.innerHTML = '<option value="">학생 선택 (학교를 먼저 선택하세요)</option>';
@@ -356,12 +514,14 @@
                 const q = query(collection(db, STUDENTS_COL), where("school", "==", school));
                 const snap = await getDocs(q);
 
+                manageStudentsData = []; // 캐싱
                 let html = '<option value="">학생을 선택하세요</option>';
-                const students = [];
-                snap.forEach(doc => students.push({ id: doc.id, name: doc.data().name }));
 
-                students.sort((a, b) => a.name.localeCompare(b.name));
-                students.forEach(s => html += `<option value="${s.id}">${s.name}</option>`);
+                snap.forEach(doc => manageStudentsData.push({ id: doc.id, ...doc.data() }));
+
+                // 번호순 정렬
+                manageStudentsData.sort((a, b) => a.number - b.number);
+                manageStudentsData.forEach(s => html += `<option value="${s.id}">${s.number}번 ${s.name}</option>`);
 
                 studentSelect.innerHTML = html;
             } catch (e) {
@@ -408,6 +568,21 @@
 
             const range = getDateRange(period);
             if (!range.start || !range.end) { alert("조회 기간을 정확히 입력해주세요."); return; }
+
+            // ★ 개인 프로필 원본 사진 렌더링 ★
+            const targetStudent = manageStudentsData.find(s => s.id === studentId);
+            const profileContainer = document.getElementById('studentProfileContainer');
+            const profileImgDiv = document.getElementById('profileImage');
+
+            document.getElementById('profileNumber').innerText = `NO. ${targetStudent.number}`;
+            document.getElementById('profileName').innerText = targetStudent.name;
+
+            if (targetStudent.imageUrl) {
+                profileImgDiv.innerHTML = `<img src="${targetStudent.imageUrl}" class="w-full h-full object-cover" alt="원본 사진">`;
+            } else {
+                profileImgDiv.innerHTML = `<i class="fas fa-user text-2xl"></i>`;
+            }
+            profileContainer.classList.remove('hidden');
 
             document.getElementById('statContainer').classList.remove('hidden');
             memoContainer.innerHTML = '<p class="text-center text-gray-400 text-sm mt-4"><i class="fas fa-spinner fa-spin"></i> 분석 중...</p>';
