@@ -33,36 +33,45 @@
 
         th,
         td {
-            border: 1px solid #e5e7eb;
-            padding: 8px 4px;
+            border: 1px solid #f0f0f0;
+            padding: 10px 6px;
             text-align: center;
             white-space: nowrap;
+            font-size: 12px;
         }
 
         th {
-            background-color: #f9fafb;
-            font-size: 11px;
-            color: #6b7280;
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 800;
+            border-bottom: 2px solid #e2e8f0;
         }
 
+        /* 한글 텍스트 강조 및 부드러운 배경색 추가 */
         .status-present {
-            color: #10b981;
+            color: #059669;
+            background-color: #ecfdf5;
             font-weight: bold;
         }
 
-        /* Green */
+        /* 초록 */
         .status-tardy {
-            color: #f59e0b;
+            color: #d97706;
+            background-color: #fffbeb;
             font-weight: bold;
         }
 
-        /* Orange */
+        /* 주황 */
         .status-absent {
-            color: #ef4444;
+            color: #dc2626;
+            background-color: #fef2f2;
             font-weight: bold;
         }
 
-        /* Red */
+        /* 빨강 */
+        .status-none {
+            color: #cbd5e1;
+        }
     </style>
 </head>
 
@@ -361,7 +370,6 @@
 
         document.getElementById('attDate').value = new Date().toISOString().split('T')[0];
 
-        // 썸네일 생성
         function generateThumbnail(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -369,16 +377,11 @@
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
+                        let width = img.width, height = img.height;
                         const max_size = 200;
-                        if (width > height) {
-                            if (width > max_size) { height *= max_size / width; width = max_size; }
-                        } else {
-                            if (height > max_size) { width *= max_size / height; height = max_size; }
-                        }
-                        canvas.width = width;
-                        canvas.height = height;
+                        if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
+                        else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                        canvas.width = width; canvas.height = height;
                         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
                         canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.6);
                     };
@@ -406,380 +409,222 @@
         window.openManage = () => {
             document.getElementById('homeView').classList.add('hidden');
             document.getElementById('manageView').classList.remove('hidden');
-            document.getElementById('manSchool').value = "";
-            document.getElementById('manStudent').innerHTML = '<option value="">학생 선택</option>';
-            document.getElementById('statContainer').classList.add('hidden');
-            document.getElementById('studentProfileContainer').classList.add('hidden');
-            document.getElementById('memoContainer').innerHTML = '';
-            toggleCustomDate();
+            loadManageStudents();
         };
 
-        // --- 출석부 화면 데이터 로드 ---
         window.loadAttendanceData = async () => {
             const listContainer = document.getElementById('studentListContainer');
             const deleteSelect = document.getElementById('deleteStudentSelect');
             const editSelect = document.getElementById('editStudentSelect');
-
-            listContainer.innerHTML = '<p class="text-center text-gray-400 py-10"><i class="fas fa-spinner fa-spin mr-2"></i>학생 목록을 불러오는 중...</p>';
-            deleteSelect.innerHTML = '<option value="">삭제할 학생 선택</option>';
-            editSelect.innerHTML = '<option value="">수정할 학생 선택</option>';
-            document.getElementById('editStudentForm').classList.add('hidden');
-
+            listContainer.innerHTML = '<p class="text-center text-gray-400 py-10"><i class="fas fa-spinner fa-spin mr-2"></i>학생 목록 로드 중...</p>';
             const selectedDate = document.getElementById('attDate').value;
 
             try {
-                const studentQuery = query(collection(db, STUDENTS_COL), where("school", "==", currentSchool));
-                const studentSnap = await getDocs(studentQuery);
+                const studentSnap = await getDocs(query(collection(db, STUDENTS_COL), where("school", "==", currentSchool)));
                 currentStudents = [];
                 studentSnap.forEach(doc => currentStudents.push({ id: doc.id, ...doc.data() }));
 
-                const attQuery = query(collection(db, ATTENDANCE_COL), where("school", "==", currentSchool));
-                const attSnap = await getDocs(attQuery);
-
+                const attSnap = await getDocs(query(collection(db, ATTENDANCE_COL), where("school", "==", currentSchool)));
                 const todayAttendance = {};
-                attSnap.forEach(doc => {
-                    const data = doc.data();
-                    if (data.date === selectedDate) {
-                        todayAttendance[data.studentId] = data;
-                    }
-                });
+                attSnap.forEach(doc => { if (doc.data().date === selectedDate) todayAttendance[doc.data().studentId] = doc.data(); });
 
-                listContainer.innerHTML = '';
-                if (currentStudents.length === 0) {
-                    listContainer.innerHTML = '<p class="text-center text-gray-400 py-10">등록된 학생이 없습니다.</p>';
-                    return;
-                }
+                listContainer.innerHTML = ''; deleteSelect.innerHTML = '<option value="">삭제 선택</option>'; editSelect.innerHTML = '<option value="">수정 선택</option>';
+                if (currentStudents.length === 0) { listContainer.innerHTML = '<p class="text-center text-gray-400 py-10">등록된 학생이 없습니다.</p>'; return; }
 
                 currentStudents.sort((a, b) => a.number - b.number);
-
                 currentStudents.forEach(student => {
                     const record = todayAttendance[student.id] || { status: '출석', memo: '' };
-                    const optionHtml = `<option value="${student.id}">${student.number}번 ${student.name}</option>`;
-                    deleteSelect.innerHTML += optionHtml;
-                    editSelect.innerHTML += optionHtml;
-
-                    let photoHtml = student.thumbnailUrl
-                        ? `<img src="${student.thumbnailUrl}" class="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-100 shrink-0" alt="photo">`
-                        : `<div class="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center text-pink-300 shadow-sm border border-pink-100 shrink-0"><i class="fas fa-user text-lg"></i></div>`;
-
-                    const html = `
+                    const opt = `<option value="${student.id}">${student.number}번 ${student.name}</option>`;
+                    deleteSelect.innerHTML += opt; editSelect.innerHTML += opt;
+                    let photoHtml = student.thumbnailUrl ? `<img src="${student.thumbnailUrl}" class="w-12 h-12 rounded-full object-cover shrink-0">` : `<div class="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center text-pink-300 shrink-0"><i class="fas fa-user"></i></div>`;
+                    listContainer.insertAdjacentHTML('beforeend', `
                         <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100" data-student-id="${student.id}">
                             <div class="flex items-center gap-3 mb-3">
                                 ${photoHtml}
                                 <div class="flex-1">
-                                    <div class="flex items-center gap-1.5 mb-1">
-                                        <span class="text-xs font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">${student.number}번</span>
-                                        <span class="font-bold text-gray-800 text-lg">${student.name}</span>
-                                    </div>
+                                    <div class="flex items-center gap-1.5 mb-1"><span class="text-xs font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">${student.number}번</span><span class="font-bold text-gray-800 text-lg">${student.name}</span></div>
                                     <div class="flex bg-gray-50 rounded-lg p-1 gap-1">
-                                        <label class="flex-1 text-center cursor-pointer px-1 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '출석' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}">
-                                            <input type="radio" name="status_${student.id}" value="출석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '출석' ? 'checked' : ''}> 출석
-                                        </label>
-                                        <label class="flex-1 text-center cursor-pointer px-1 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '지각' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}">
-                                            <input type="radio" name="status_${student.id}" value="지각" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '지각' ? 'checked' : ''}> 지각
-                                        </label>
-                                        <label class="flex-1 text-center cursor-pointer px-1 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '결석' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'}">
-                                            <input type="radio" name="status_${student.id}" value="결석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '결석' ? 'checked' : ''}> 결석
-                                        </label>
+                                        <label class="flex-1 text-center cursor-pointer py-1.5 rounded-md text-sm font-bold ${record.status === '출석' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500'}"><input type="radio" name="status_${student.id}" value="출석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '출석' ? 'checked' : ''}> 출석</label>
+                                        <label class="flex-1 text-center cursor-pointer py-1.5 rounded-md text-sm font-bold ${record.status === '지각' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500'}"><input type="radio" name="status_${student.id}" value="지각" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '지각' ? 'checked' : ''}> 지각</label>
+                                        <label class="flex-1 text-center cursor-pointer py-1.5 rounded-md text-sm font-bold ${record.status === '결석' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500'}"><input type="radio" name="status_${student.id}" value="결석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '결석' ? 'checked' : ''}> 결석</label>
                                     </div>
                                 </div>
                             </div>
-                            <input type="text" id="memo_${student.id}" value="${record.memo}" placeholder="특이사항 메모..." class="w-full border-b border-dashed border-gray-300 py-1 text-sm text-gray-600 focus:outline-none focus:border-pink-400 bg-transparent mt-1">
+                            <input type="text" id="memo_${student.id}" value="${record.memo}" placeholder="메모..." class="w-full border-b border-dashed border-gray-300 py-1 text-sm text-gray-600 focus:outline-none focus:border-pink-400 bg-transparent mt-1">
                         </div>
-                    `;
-                    listContainer.insertAdjacentHTML('beforeend', html);
+                    `);
                 });
-
-            } catch (error) {
-                listContainer.innerHTML = '<p class="text-center text-red-400 py-10">데이터 로드 오류</p>';
-            }
+            } catch (e) { listContainer.innerHTML = '에러 발생'; }
         };
 
         window.updateRadioStyle = (radio) => {
             const labels = radio.closest('div').querySelectorAll('label');
-            labels.forEach(l => l.className = 'flex-1 text-center cursor-pointer px-1 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200');
+            labels.forEach(l => l.className = 'flex-1 text-center cursor-pointer py-1.5 rounded-md text-sm font-bold text-gray-500');
             if (radio.value === '출석') radio.parentElement.classList.add('bg-green-500', 'text-white', 'shadow-sm');
             if (radio.value === '지각') radio.parentElement.classList.add('bg-orange-500', 'text-white', 'shadow-sm');
             if (radio.value === '결석') radio.parentElement.classList.add('bg-red-500', 'text-white', 'shadow-sm');
         };
 
         window.addStudent = async () => {
-            const numInput = document.getElementById('newStudentNum');
-            const nameInput = document.getElementById('newStudentName');
-            const photoInput = document.getElementById('newStudentPhoto');
-            const btn = document.getElementById('addStudentBtn');
-            const statusText = document.getElementById('uploadStatus');
-            const number = numInput.value.trim();
-            const name = nameInput.value.trim();
-            const photoFile = photoInput.files[0];
-
-            if (!number || !name) { alert("번호와 이름을 입력하세요."); return; }
-            btn.disabled = true; btn.classList.add('opacity-50'); statusText.classList.remove('hidden');
-
+            const num = document.getElementById('newStudentNum').value.trim(), name = document.getElementById('newStudentName').value.trim(), photoFile = document.getElementById('newStudentPhoto').files[0];
+            if (!num || !name) { alert("정보 입력 필수"); return; }
+            document.getElementById('addStudentBtn').disabled = true; document.getElementById('uploadStatus').classList.remove('hidden');
             try {
                 let imageUrl = "", thumbnailUrl = "";
                 if (photoFile) {
-                    const timeStr = Date.now();
-                    const originalImageRef = ref(storage, `${STUDENTS_COL}/images/${timeStr}_${photoFile.name}`);
-                    await uploadBytes(originalImageRef, photoFile);
-                    imageUrl = await getDownloadURL(originalImageRef);
-                    const thumbnailBlob = await generateThumbnail(photoFile);
-                    const thumbnailRef = ref(storage, `${STUDENTS_COL}/thumbnails/${timeStr}_${photoFile.name}.jpg`);
-                    await uploadBytes(thumbnailRef, thumbnailBlob);
-                    thumbnailUrl = await getDownloadURL(thumbnailRef);
+                    const timeStr = Date.now(), originalRef = ref(storage, `${STUDENTS_COL}/images/${timeStr}_${photoFile.name}`);
+                    await uploadBytes(originalRef, photoFile); imageUrl = await getDownloadURL(originalRef);
+                    const thumbBlob = await generateThumbnail(photoFile), thumbRef = ref(storage, `${STUDENTS_COL}/thumbnails/${timeStr}_${photoFile.name}.jpg`);
+                    await uploadBytes(thumbRef, thumbBlob); thumbnailUrl = await getDownloadURL(thumbRef);
                 }
-
-                await addDoc(collection(db, STUDENTS_COL), { school: currentSchool, number: Number(number), name, imageUrl, thumbnailUrl, createdAt: serverTimestamp() });
-                numInput.value = ''; nameInput.value = ''; photoInput.value = '';
-                alert("학생 추가 완료!"); loadAttendanceData();
-            } catch (e) { alert("추가 실패"); } finally { btn.disabled = false; btn.classList.remove('opacity-50'); statusText.classList.add('hidden'); }
+                await addDoc(collection(db, STUDENTS_COL), { school: currentSchool, number: Number(num), name, imageUrl, thumbnailUrl, createdAt: serverTimestamp() });
+                alert("추가 완료"); loadAttendanceData();
+            } catch (e) { alert("추가 실패"); } finally { document.getElementById('addStudentBtn').disabled = false; document.getElementById('uploadStatus').classList.add('hidden'); }
         };
 
         window.loadStudentDataForEdit = () => {
-            const select = document.getElementById('editStudentSelect');
+            const id = document.getElementById('editStudentSelect').value;
             const form = document.getElementById('editStudentForm');
-            const studentId = select.value;
-            if (!studentId) { form.classList.add('hidden'); return; }
-            const student = currentStudents.find(s => s.id === studentId);
-            if (student) {
-                document.getElementById('editStudentNum').value = student.number || '';
-                document.getElementById('editStudentName').value = student.name || '';
-                form.classList.remove('hidden');
-            }
+            if (!id) { form.classList.add('hidden'); return; }
+            const student = currentStudents.find(s => s.id === id);
+            if (student) { document.getElementById('editStudentNum').value = student.number; document.getElementById('editStudentName').value = student.name; form.classList.remove('hidden'); }
         };
 
         window.updateStudent = async () => {
-            const studentId = document.getElementById('editStudentSelect').value;
-            const numInput = document.getElementById('editStudentNum').value.trim();
-            const nameInput = document.getElementById('editStudentName').value.trim();
-            const photoFile = document.getElementById('editStudentPhoto').files[0];
-            const btn = document.getElementById('updateStudentBtn');
-            const statusText = document.getElementById('editUploadStatus');
-
-            if (!numInput || !nameInput) { alert("정보를 모두 입력하세요."); return; }
-            const student = currentStudents.find(s => s.id === studentId);
-            btn.disabled = true; btn.classList.add('opacity-50'); statusText.classList.remove('hidden');
-
+            const id = document.getElementById('editStudentSelect').value, num = document.getElementById('editStudentNum').value.trim(), name = document.getElementById('editStudentName').value.trim(), photoFile = document.getElementById('editStudentPhoto').files[0];
+            if (!num || !name) return;
+            const student = currentStudents.find(s => s.id === id);
+            document.getElementById('updateStudentBtn').disabled = true; document.getElementById('editUploadStatus').classList.remove('hidden');
             try {
-                let imageUrl = student.imageUrl || "", thumbnailUrl = student.thumbnailUrl || "";
+                let imageUrl = student.imageUrl, thumbnailUrl = student.thumbnailUrl;
                 if (photoFile) {
-                    const timeStr = Date.now();
-                    const originalImageRef = ref(storage, `${STUDENTS_COL}/images/${timeStr}_${photoFile.name}`);
-                    await uploadBytes(originalImageRef, photoFile);
-                    imageUrl = await getDownloadURL(originalImageRef);
-                    const thumbnailBlob = await generateThumbnail(photoFile);
-                    const thumbnailRef = ref(storage, `${STUDENTS_COL}/thumbnails/${timeStr}_${photoFile.name}.jpg`);
-                    await uploadBytes(thumbnailRef, thumbnailBlob);
-                    thumbnailUrl = await getDownloadURL(thumbnailRef);
+                    const timeStr = Date.now(), originalRef = ref(storage, `${STUDENTS_COL}/images/${timeStr}_${photoFile.name}`);
+                    await uploadBytes(originalRef, photoFile); imageUrl = await getDownloadURL(originalRef);
+                    const thumbBlob = await generateThumbnail(photoFile), thumbRef = ref(storage, `${STUDENTS_COL}/thumbnails/${timeStr}_${photoFile.name}.jpg`);
+                    await uploadBytes(thumbRef, thumbBlob); thumbnailUrl = await getDownloadURL(thumbRef);
                 }
-                await updateDoc(doc(db, STUDENTS_COL, studentId), { number: Number(numInput), name: nameInput, imageUrl, thumbnailUrl, updatedAt: serverTimestamp() });
-                alert("수정 완료!"); document.getElementById('editStudentForm').classList.add('hidden'); loadAttendanceData();
-            } catch (e) { alert("수정 실패"); } finally { btn.disabled = false; btn.classList.remove('opacity-50'); statusText.classList.add('hidden'); }
+                await updateDoc(doc(db, STUDENTS_COL, id), { number: Number(num), name, imageUrl, thumbnailUrl, updatedAt: serverTimestamp() });
+                alert("수정 완료"); document.getElementById('editStudentForm').classList.add('hidden'); loadAttendanceData();
+            } catch (e) { alert("수정 실패"); } finally { document.getElementById('updateStudentBtn').disabled = false; document.getElementById('editUploadStatus').classList.add('hidden'); }
         };
 
         window.deleteStudent = async () => {
-            const select = document.getElementById('deleteStudentSelect');
-            const studentId = select.value;
-            const studentName = select.options[select.selectedIndex]?.text;
-            if (!studentId) { alert("학생을 선택하세요."); return; }
-            if (confirm(`[${studentName}] 학생을 정말 삭제하시겠어요?`)) {
-                await deleteDoc(doc(db, STUDENTS_COL, studentId));
-                alert("삭제 완료"); loadAttendanceData();
-            }
+            const id = document.getElementById('deleteStudentSelect').value;
+            if (!id) return;
+            if (confirm("정말 삭제하시겠어요?")) { await deleteDoc(doc(db, STUDENTS_COL, id)); alert("삭제 완료"); loadAttendanceData(); }
         };
 
         window.saveAllAttendance = async () => {
-            const selectedDate = document.getElementById('attDate').value;
-            let saveCount = 0;
+            const date = document.getElementById('attDate').value; let count = 0;
             try {
                 for (const student of currentStudents) {
-                    const statusRadio = document.querySelector(`input[name="status_${student.id}"]:checked`);
-                    const memoInput = document.getElementById(`memo_${student.id}`);
-                    if (statusRadio) {
-                        const docId = `${currentSchool}_${student.id}_${selectedDate}`;
-                        await setDoc(doc(db, ATTENDANCE_COL, docId), { school: currentSchool, studentId: student.id, date: selectedDate, status: statusRadio.value, memo: memoInput.value.trim(), updatedAt: serverTimestamp() });
-                        saveCount++;
-                    }
+                    const radio = document.querySelector(`input[name="status_${student.id}"]:checked`), memo = document.getElementById(`memo_${student.id}`).value.trim();
+                    if (radio) { await setDoc(doc(db, ATTENDANCE_COL, `${currentSchool}_${student.id}_${date}`), { school: currentSchool, studentId: student.id, date, status: radio.value, memo, updatedAt: serverTimestamp() }); count++; }
                 }
-                alert(`${saveCount}명 저장 완료!`);
+                alert(`${count}명 저장 완료`);
             } catch (e) { alert("저장 실패"); }
         };
 
-        // --- 학생관리 로직 ---
-        window.toggleCustomDate = () => {
-            const period = document.getElementById('manPeriod').value;
-            const customDiv = document.getElementById('customDateContainer');
-            if (period === '기간지정') customDiv.classList.remove('hidden'); else customDiv.classList.add('hidden');
-        };
+        // --- 학생관리/조회 공용 로직 ---
+        window.toggleCustomDate = () => { const p = document.getElementById('manPeriod').value; document.getElementById('customDateContainer').classList.toggle('hidden', p !== '기간지정'); };
+        window.toggleRepCustomDate = () => { const p = document.getElementById('repPeriod').value; document.getElementById('repCustomDateContainer').classList.toggle('hidden', p !== '기간지정'); };
 
         window.loadManageStudents = async () => {
             const school = document.getElementById('manSchool').value;
-            const studentSelect = document.getElementById('manStudent');
-            studentSelect.innerHTML = '<option value="">불러오는 중...</option>';
-            if (!school) return;
+            const select = document.getElementById('manStudent');
+            if (!school) { select.innerHTML = '<option value="">학교 선택 먼저</option>'; return; }
             try {
-                const q = query(collection(db, STUDENTS_COL), where("school", "==", school));
-                const snap = await getDocs(q);
-                manageStudentsData = [];
-                let html = '<option value="">학생 선택</option>';
-                snap.forEach(doc => manageStudentsData.push({ id: doc.id, ...doc.data() }));
+                const snap = await getDocs(query(collection(db, STUDENTS_COL), where("school", "==", school)));
+                manageStudentsData = []; snap.forEach(doc => manageStudentsData.push({ id: doc.id, ...doc.data() }));
                 manageStudentsData.sort((a, b) => a.number - b.number);
-                manageStudentsData.forEach(s => html += `<option value="${s.id}">${s.number}번 ${s.name}</option>`);
-                studentSelect.innerHTML = html;
-            } catch (e) { studentSelect.innerHTML = '<option value="">불러오기 실패</option>'; }
+                select.innerHTML = '<option value="">학생 선택</option>' + manageStudentsData.map(s => `<option value="${s.id}">${s.number}번 ${s.name}</option>`).join('');
+            } catch (e) { select.innerHTML = '로드 실패'; }
         };
 
-        function getDateRange(periodStr, startId, endId) {
-            const today = new Date();
-            let start, end;
-            if (periodStr === '이번주') {
-                const day = today.getDay();
-                const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-                start = new Date(today.setDate(diff));
-                end = new Date(start); end.setDate(end.getDate() + 6);
-            } else if (periodStr === '이번달') {
-                start = new Date(today.getFullYear(), today.getMonth(), 1);
-                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            } else if (periodStr === '올해') {
-                start = new Date(today.getFullYear(), 0, 1);
-                end = new Date(today.getFullYear(), 11, 31);
-            } else {
-                return { start: document.getElementById(startId).value, end: document.getElementById(endId).value };
-            }
-            const offset = start.getTimezoneOffset() * 60000;
-            return {
-                start: (new Date(start - offset)).toISOString().split('T')[0],
-                end: (new Date(end - offset)).toISOString().split('T')[0]
-            };
+        function getDateRange(p, sId, eId) {
+            const t = new Date(); let s, e;
+            if (p === '이번주') { const day = t.getDay(); const diff = t.getDate() - day + (day === 0 ? -6 : 1); s = new Date(t.setDate(diff)); e = new Date(s); e.setDate(e.getDate() + 6); }
+            else if (p === '이번달') { s = new Date(t.getFullYear(), t.getMonth(), 1); e = new Date(t.getFullYear(), t.getMonth() + 1, 0); }
+            else if (p === '올해') { s = new Date(t.getFullYear(), 0, 1); e = new Date(t.getFullYear(), 11, 31); }
+            else { return { start: document.getElementById(sId).value, end: document.getElementById(eId).value }; }
+            const off = s.getTimezoneOffset() * 60000; return { start: (new Date(s - off)).toISOString().split('T')[0], end: (new Date(e - off)).toISOString().split('T')[0] };
         }
 
         window.searchAttendance = async () => {
-            const studentId = document.getElementById('manStudent').value;
-            const range = getDateRange(document.getElementById('manPeriod').value, 'manStartDate', 'manEndDate');
-            if (!studentId || !range.start || !range.end) { alert("정보를 모두 선택하세요."); return; }
-
-            const targetStudent = manageStudentsData.find(s => s.id === studentId);
-            const profileContainer = document.getElementById('studentProfileContainer');
-            document.getElementById('profileNumber').innerText = `NO. ${targetStudent.number}`;
-            document.getElementById('profileName').innerText = targetStudent.name;
-            document.getElementById('profileImage').innerHTML = targetStudent.imageUrl ? `<img src="${targetStudent.imageUrl}" class="w-full h-full object-cover">` : `<i class="fas fa-user text-5xl"></i>`;
-            profileContainer.classList.remove('hidden');
+            const sid = document.getElementById('manStudent').value, range = getDateRange(document.getElementById('manPeriod').value, 'manStartDate', 'manEndDate');
+            if (!sid || !range.start || !range.end) return;
+            const target = manageStudentsData.find(s => s.id === sid);
+            document.getElementById('profileNumber').innerText = `NO. ${target.number}`; document.getElementById('profileName').innerText = target.name;
+            document.getElementById('profileImage').innerHTML = target.imageUrl ? `<img src="${target.imageUrl}" class="w-full h-full object-cover">` : `<i class="fas fa-user text-5xl"></i>`;
+            document.getElementById('studentProfileContainer').classList.remove('hidden');
 
             try {
-                const q = query(collection(db, ATTENDANCE_COL), where("studentId", "==", studentId));
-                const snap = await getDocs(q);
-                let present = 0, tardy = 0, absent = 0, tardyDates = [], absentDates = [], memos = [];
+                const snap = await getDocs(query(collection(db, ATTENDANCE_COL), where("studentId", "==", sid)));
+                let p = 0, t = 0, a = 0, td = [], ad = [], ms = [];
                 snap.forEach(doc => {
-                    const data = doc.data();
-                    if (data.date >= range.start && data.date <= range.end) {
-                        if (data.status === '출석') present++;
-                        else if (data.status === '지각') { tardy++; tardyDates.push(data.date); }
-                        else if (data.status === '결석') { absent++; absentDates.push(data.date); }
-                        if (data.memo) memos.push({ date: data.date, memo: data.memo, status: data.status });
+                    const d = doc.data();
+                    if (d.date >= range.start && d.date <= range.end) {
+                        if (d.status === '출석') p++; else if (d.status === '지각') { t++; td.push(d.date); } else if (d.status === '결석') { a++; ad.push(d.date); }
+                        if (d.memo) ms.push({ date: d.date, memo: d.memo, status: d.status });
                     }
                 });
-                document.getElementById('statPresent').innerText = present;
-                document.getElementById('statTardy').innerText = tardy;
-                document.getElementById('statAbsent').innerText = absent;
-                document.getElementById('tardyList').innerHTML = tardyDates.length > 0 ? `지각: ${tardyDates.join(', ')}` : '';
-                document.getElementById('absentList').innerHTML = absentDates.length > 0 ? `결석: ${absentDates.join(', ')}` : '';
-                document.getElementById('statDetails').classList.toggle('hidden', tardyDates.length === 0 && absentDates.length === 0);
-                document.getElementById('tardyList').classList.toggle('hidden', tardyDates.length === 0);
-                document.getElementById('absentList').classList.toggle('hidden', absentDates.length === 0);
+                document.getElementById('statPresent').innerText = p; document.getElementById('statTardy').innerText = t; document.getElementById('statAbsent').innerText = a;
+                document.getElementById('tardyList').innerHTML = td.length ? `지각: ${td.sort().join(', ')}` : '';
+                document.getElementById('absentList').innerHTML = ad.length ? `결석: ${ad.sort().join(', ')}` : '';
+                document.getElementById('statDetails').classList.toggle('hidden', !td.length && !ad.length);
+                document.getElementById('tardyList').classList.toggle('hidden', !td.length);
+                document.getElementById('absentList').classList.toggle('hidden', !ad.length);
                 document.getElementById('statContainer').classList.remove('hidden');
-
-                const memoContainer = document.getElementById('memoContainer');
-                memos.sort((a, b) => b.date.localeCompare(a.date));
-                memoContainer.innerHTML = memos.map(m => `<div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100"><div class="text-[10px] font-bold text-gray-400 mb-1">${m.date} [${m.status}]</div><div class="text-xs">${m.memo}</div></div>`).join('');
+                ms.sort((a, b) => b.date.localeCompare(a.date));
+                document.getElementById('memoContainer').innerHTML = ms.map(m => `<div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100"><div class="text-[10px] font-bold text-gray-400 mb-1">${m.date} [${m.status}]</div><div class="text-xs">${m.memo}</div></div>`).join('');
             } catch (e) { alert("조회 실패"); }
         };
-
-        // ========================================================
-        // ★ 전체 학생 출결 보기 (New Function) ★
-        // ========================================================
 
         window.openFullReport = () => {
             document.getElementById('homeView').classList.add('hidden');
             document.getElementById('fullReportView').classList.remove('hidden');
-            document.getElementById('repSchool').value = "";
             document.getElementById('reportTableContainer').innerHTML = '<p class="text-center text-gray-400 py-20">학교와 기간을 선택하고 조회를 눌러주세요.</p>';
-            toggleRepCustomDate();
-        };
-
-        window.toggleRepCustomDate = () => {
-            const period = document.getElementById('repPeriod').value;
-            document.getElementById('repCustomDateContainer').classList.toggle('hidden', period !== '기간지정');
         };
 
         window.loadFullReport = async () => {
-            const school = document.getElementById('repSchool').value;
-            const range = getDateRange(document.getElementById('repPeriod').value, 'repStartDate', 'repEndDate');
-            const container = document.getElementById('reportTableContainer');
-
-            if (!school || !range.start || !range.end) { alert("학교와 기간을 정확히 선택하세요."); return; }
-
-            container.innerHTML = '<p class="text-center text-gray-400 py-20"><i class="fas fa-spinner fa-spin mr-2"></i>표를 구성하는 중...</p>';
+            const school = document.getElementById('repSchool').value, range = getDateRange(document.getElementById('repPeriod').value, 'repStartDate', 'repEndDate'), container = document.getElementById('reportTableContainer');
+            if (!school || !range.start || !range.end) { alert("학교/기간 선택 필수"); return; }
+            container.innerHTML = '<p class="text-center text-gray-400 py-20"><i class="fas fa-spinner fa-spin"></i> 표 생성 중...</p>';
 
             try {
-                // 1. 학생 목록 가져오기
-                const studentQ = query(collection(db, STUDENTS_COL), where("school", "==", school));
-                const studentSnap = await getDocs(studentQ);
-                const students = [];
-                studentSnap.forEach(doc => students.push({ id: doc.id, ...doc.data() }));
+                const sSnap = await getDocs(query(collection(db, STUDENTS_COL), where("school", "==", school)));
+                const students = []; sSnap.forEach(doc => students.push({ id: doc.id, ...doc.data() }));
                 students.sort((a, b) => a.number - b.number);
 
-                // 2. 전체 출결 데이터 가져오기 (해당 학교)
-                const attQ = query(collection(db, ATTENDANCE_COL), where("school", "==", school));
-                const attSnap = await getDocs(attQ);
-
-                const attData = {}; // { studentId: { date: status } }
-                const datesSet = new Set();
-
-                attSnap.forEach(doc => {
-                    const data = doc.data();
-                    if (data.date >= range.start && data.date <= range.end) {
-                        if (!attData[data.studentId]) attData[data.studentId] = {};
-                        attData[data.studentId][data.date] = data.status;
-                        datesSet.add(data.date);
+                const aSnap = await getDocs(query(collection(db, ATTENDANCE_COL), where("school", "==", school)));
+                const attData = {}, datesSet = new Set();
+                aSnap.forEach(doc => {
+                    const d = doc.data();
+                    if (d.date >= range.start && d.date <= range.end) {
+                        if (!attData[d.studentId]) attData[d.studentId] = {};
+                        attData[d.studentId][d.date] = d.status;
+                        datesSet.add(d.date);
                     }
                 });
 
                 const sortedDates = Array.from(datesSet).sort();
+                if (!students.length) { container.innerHTML = '<p class="text-center py-20">학생 없음</p>'; return; }
 
-                if (students.length === 0) {
-                    container.innerHTML = '<p class="text-center text-gray-400 py-20">해당 학교에 등록된 학생이 없습니다.</p>';
-                    return;
-                }
-
-                // 3. 표(Table) 생성
-                let html = '<table><thead><tr><th>번호</th><th>이름</th>';
-                sortedDates.forEach(date => {
-                    const shortDate = date.substring(5); // MM-DD만 표시
-                    html += `<th>${shortDate}</th>`;
-                });
-                html += '</tr></thead><tbody>';
-
+                let h = '<table><thead><tr><th>번호</th><th>이름</th>' + sortedDates.map(d => `<th>${d.substring(5)}</th>`).join('') + '</tr></thead><tbody>';
                 students.forEach(s => {
-                    html += `<tr><td>${s.number}</td><td class="font-bold">${s.name}</td>`;
-                    sortedDates.forEach(date => {
-                        const status = attData[s.id]?.[date] || '-';
-                        let statusIcon = status;
-                        let statusClass = "";
-                        if (status === '출석') { statusIcon = 'V'; statusClass = "status-present"; }
-                        if (status === '지각') { statusIcon = '△'; statusClass = "status-tardy"; }
-                        if (status === '결석') { statusIcon = 'X'; statusClass = "status-absent"; }
-                        html += `<td class="${statusClass}">${statusIcon}</td>`;
+                    h += `<tr><td>${s.number}</td><td class="font-bold">${s.name}</td>`;
+                    sortedDates.forEach(d => {
+                        const status = attData[s.id]?.[d] || '-';
+                        let cls = "status-none";
+                        if (status === '출석') cls = "status-present";
+                        else if (status === '지각') cls = "status-tardy";
+                        else if (status === '결석') cls = "status-absent";
+                        h += `<td class="${cls}">${status !== '-' ? status : '-'}</td>`;
                     });
-                    html += '</tr>';
+                    h += '</tr>';
                 });
-
-                html += '</tbody></table>';
-                container.innerHTML = html;
-
-            } catch (e) {
-                console.error(e);
-                container.innerHTML = '<p class="text-center text-red-400 py-20">데이터 조회 실패</p>';
-            }
+                container.innerHTML = h + '</tbody></table>';
+            } catch (e) { container.innerHTML = '조회 실패'; }
         };
 
     </script>
