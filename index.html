@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>goodment 출석부</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="goodmento">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-100 font-sans text-gray-800 selection:bg-pink-200">
+
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative overflow-hidden">
+
+        <div id="homeView" class="flex flex-col min-h-screen bg-pink-50 p-6 relative">
+            <div class="flex-1 flex flex-col items-center justify-center">
+                <div
+                    class="w-20 h-20 bg-pink-500 rounded-full flex items-center justify-center mb-4 shadow-lg text-white text-3xl">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <h1 class="text-3xl font-extrabold text-gray-800 mb-1">goodment 출석부</h1>
+                <p class="text-pink-500 font-medium mb-10 text-sm tracking-wide uppercase">goodmento-school-check</p>
+
+                <div class="w-full space-y-4">
+                    <button onclick="openAttendance('학교1(CCM)')"
+                        class="w-full py-4 bg-white rounded-2xl shadow-sm border border-pink-100 text-gray-700 font-bold hover:shadow-md hover:border-pink-300 transition flex items-center justify-between px-6">
+                        <span>학교1(CCM) 출석부</span><i class="fas fa-chevron-right text-pink-300"></i>
+                    </button>
+                    <button onclick="openAttendance('학교2(Strawberry)')"
+                        class="w-full py-4 bg-white rounded-2xl shadow-sm border border-pink-100 text-gray-700 font-bold hover:shadow-md hover:border-pink-300 transition flex items-center justify-between px-6">
+                        <span>학교2(Strawberry) 출석부</span><i class="fas fa-chevron-right text-pink-300"></i>
+                    </button>
+                    <button onclick="openAttendance('학교3(Ankur)')"
+                        class="w-full py-4 bg-white rounded-2xl shadow-sm border border-pink-100 text-gray-700 font-bold hover:shadow-md hover:border-pink-300 transition flex items-center justify-between px-6">
+                        <span>학교3(Ankur) 출석부</span><i class="fas fa-chevron-right text-pink-300"></i>
+                    </button>
+
+                    <div class="pt-4 border-t border-pink-200 mt-6">
+                        <button onclick="openManage()"
+                            class="w-full py-4 bg-indigo-500 rounded-2xl shadow-md text-white font-bold hover:bg-indigo-600 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-users-cog"></i> 학생관리
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="attendanceView" class="hidden flex flex-col min-h-screen bg-gray-50 pb-24">
+            <div class="bg-pink-500 text-white p-4 flex items-center justify-between shadow-md sticky top-0 z-10">
+                <button onclick="goHome()" class="text-xl px-2"><i class="fas fa-arrow-left"></i></button>
+                <h2 id="attSchoolTitle" class="font-bold text-lg tracking-wide">학교 출석부</h2>
+                <div class="w-8"></div>
+            </div>
+
+            <div class="p-4 bg-white shadow-sm z-0 relative">
+                <input type="date" id="attDate"
+                    class="w-full border-2 border-pink-100 rounded-xl px-4 py-3 text-center font-bold text-gray-700 focus:outline-none focus:border-pink-400 transition"
+                    onchange="loadAttendanceData()">
+            </div>
+
+            <div id="studentListContainer" class="flex-1 p-4 space-y-4 overflow-y-auto">
+                <p class="text-center text-gray-400 py-10"><i class="fas fa-spinner fa-spin mr-2"></i>데이터를 불러오는 중...</p>
+            </div>
+
+            <div class="p-4 bg-white border-t border-gray-100 pb-8">
+                <button onclick="saveAllAttendance()"
+                    class="w-full py-3.5 bg-pink-500 text-white font-bold rounded-xl shadow-md hover:bg-pink-600 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-save"></i> 전체 출석 저장
+                </button>
+
+                <div class="mt-6 pt-6 border-t border-gray-100">
+                    <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">신규 학생 등록</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="newStudentName" placeholder="학생 이름 입력"
+                            class="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pink-400">
+                        <button onclick="addStudent()"
+                            class="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2 rounded-xl text-sm font-bold shadow transition">추가</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="manageView" class="hidden flex flex-col min-h-screen bg-gray-50 pb-20">
+            <div class="bg-indigo-500 text-white p-4 flex items-center justify-between shadow-md sticky top-0 z-10">
+                <button onclick="goHome()" class="text-xl px-2"><i class="fas fa-arrow-left"></i></button>
+                <h2 class="font-bold text-lg tracking-wide">학생 관리</h2>
+                <div class="w-8"></div>
+            </div>
+
+            <div class="p-5 bg-white shadow-sm border-b border-gray-100 space-y-4">
+                <select id="manSchool"
+                    class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 text-gray-700"
+                    onchange="loadManageStudents()">
+                    <option value="">학교 선택</option>
+                    <option value="학교1(CCM)">학교1(CCM)</option>
+                    <option value="학교2(Strawberry)">학교2(Strawberry)</option>
+                    <option value="학교3(Ankur)">학교3(Ankur)</option>
+                </select>
+
+                <select id="manStudent"
+                    class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 text-gray-700">
+                    <option value="">학생 선택 (학교를 먼저 선택하세요)</option>
+                </select>
+
+                <select id="manPeriod"
+                    class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 text-gray-700"
+                    onchange="toggleCustomDate()">
+                    <option value="이번주">이번주</option>
+                    <option value="이번달">이번달</option>
+                    <option value="올해">올해</option>
+                    <option value="기간지정">직접 기간 지정</option>
+                </select>
+
+                <div id="customDateContainer"
+                    class="hidden flex gap-2 items-center bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    <input type="date" id="manStartDate"
+                        class="flex-1 border-none bg-transparent text-sm focus:outline-none text-gray-700">
+                    <span class="text-gray-400 font-bold">~</span>
+                    <input type="date" id="manEndDate"
+                        class="flex-1 border-none bg-transparent text-sm focus:outline-none text-gray-700">
+                </div>
+
+                <button onclick="searchAttendance()"
+                    class="w-full py-3.5 bg-indigo-500 text-white font-bold rounded-xl shadow-md hover:bg-indigo-600 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-search"></i> 출결 조회하기
+                </button>
+            </div>
+
+            <div class="p-5 flex-1 overflow-y-auto">
+                <div id="statContainer" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hidden mb-6">
+                    <h3 class="font-bold text-gray-800 mb-4 text-center">출결 요약</h3>
+                    <div class="flex justify-around text-center">
+                        <div class="bg-green-50 w-full py-3 rounded-l-xl border-r border-white">
+                            <p class="text-xs text-green-600 mb-1 font-bold">출석</p>
+                            <p id="statPresent" class="text-2xl font-extrabold text-green-500">0</p>
+                        </div>
+                        <div class="bg-orange-50 w-full py-3 border-r border-white">
+                            <p class="text-xs text-orange-600 mb-1 font-bold">지각</p>
+                            <p id="statTardy" class="text-2xl font-extrabold text-orange-500">0</p>
+                        </div>
+                        <div class="bg-red-50 w-full py-3 rounded-r-xl">
+                            <p class="text-xs text-red-600 mb-1 font-bold">결석</p>
+                            <p id="statAbsent" class="text-2xl font-extrabold text-red-500">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="memoContainer" class="space-y-3">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, where, getDocs, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTwOAC_LrrKH8CKepUOTf0pyd9qRv4y_8",
+            authDomain: "cnation-project.firebaseapp.com",
+            projectId: "cnation-project",
+            storageBucket: "cnation-project.firebasestorage.app",
+            messagingSenderId: "1004154104261",
+            appId: "1:1004154104261:web:0eac4c7ded38262ae5c3ac",
+            measurementId: "G-7PW1NSP5EQ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const STUDENTS_COL = "cnation-goodmento-students";
+        const ATTENDANCE_COL = "cnation-goodmento-attendance";
+
+        let currentSchool = "";
+        let currentStudents = [];
+
+        document.getElementById('attDate').value = new Date().toISOString().split('T')[0];
+
+        window.openAttendance = (school) => {
+            currentSchool = school;
+            document.getElementById('attSchoolTitle').innerText = school;
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('attendanceView').classList.remove('hidden');
+            loadAttendanceData();
+        };
+
+        window.openManage = () => {
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('manageView').classList.remove('hidden');
+
+            document.getElementById('manSchool').value = "";
+            document.getElementById('manStudent').innerHTML = '<option value="">학생 선택 (학교를 먼저 선택하세요)</option>';
+            document.getElementById('statContainer').classList.add('hidden');
+            document.getElementById('memoContainer').innerHTML = '';
+            toggleCustomDate();
+        };
+
+        window.goHome = () => {
+            document.getElementById('attendanceView').classList.add('hidden');
+            document.getElementById('manageView').classList.add('hidden');
+            document.getElementById('homeView').classList.remove('hidden');
+        };
+
+        window.loadAttendanceData = async () => {
+            const listContainer = document.getElementById('studentListContainer');
+            listContainer.innerHTML = '<p class="text-center text-gray-400 py-10"><i class="fas fa-spinner fa-spin mr-2"></i>학생 목록을 불러오는 중...</p>';
+
+            const selectedDate = document.getElementById('attDate').value;
+
+            try {
+                const studentQuery = query(collection(db, STUDENTS_COL), where("school", "==", currentSchool));
+                const studentSnap = await getDocs(studentQuery);
+                currentStudents = [];
+                studentSnap.forEach(doc => currentStudents.push({ id: doc.id, ...doc.data() }));
+
+                const attQuery = query(collection(db, ATTENDANCE_COL), where("school", "==", currentSchool));
+                const attSnap = await getDocs(attQuery);
+
+                const todayAttendance = {};
+                attSnap.forEach(doc => {
+                    const data = doc.data();
+                    if (data.date === selectedDate) {
+                        todayAttendance[data.studentId] = data;
+                    }
+                });
+
+                listContainer.innerHTML = '';
+                if (currentStudents.length === 0) {
+                    listContainer.innerHTML = '<p class="text-center text-gray-400 py-10">등록된 학생이 없습니다. 아래에서 추가해주세요.</p>';
+                    return;
+                }
+
+                currentStudents.sort((a, b) => a.name.localeCompare(b.name));
+
+                currentStudents.forEach(student => {
+                    const record = todayAttendance[student.id] || { status: '출석', memo: '' };
+
+                    const html = `
+                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100" data-student-id="${student.id}">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-bold text-gray-800 text-lg">${student.name}</span>
+                                <div class="flex bg-gray-100 rounded-lg p-1 gap-1">
+                                    <label class="cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '출석' ? 'bg-green-500 text-white' : 'text-gray-500 hover:bg-gray-200'}">
+                                        <input type="radio" name="status_${student.id}" value="출석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '출석' ? 'checked' : ''}> 출석
+                                    </label>
+                                    <label class="cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '지각' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-200'}">
+                                        <input type="radio" name="status_${student.id}" value="지각" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '지각' ? 'checked' : ''}> 지각
+                                    </label>
+                                    <label class="cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors ${record.status === '결석' ? 'bg-red-500 text-white' : 'text-gray-500 hover:bg-gray-200'}">
+                                        <input type="radio" name="status_${student.id}" value="결석" class="hidden" onchange="updateRadioStyle(this)" ${record.status === '결석' ? 'checked' : ''}> 결석
+                                    </label>
+                                </div>
+                            </div>
+                            <input type="text" id="memo_${student.id}" value="${record.memo}" placeholder="특이사항 메모..." class="w-full border-b border-dashed border-gray-300 py-1 text-sm text-gray-600 focus:outline-none focus:border-pink-400 bg-transparent">
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', html);
+                });
+
+            } catch (error) {
+                console.error(error);
+                listContainer.innerHTML = '<p class="text-center text-red-400 py-10">데이터를 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        };
+
+        window.updateRadioStyle = (radio) => {
+            const labels = radio.closest('div').querySelectorAll('label');
+            labels.forEach(l => {
+                l.className = 'cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200';
+            });
+
+            if (radio.value === '출석') radio.parentElement.classList.add('bg-green-500', 'text-white');
+            if (radio.value === '지각') radio.parentElement.classList.add('bg-orange-500', 'text-white');
+            if (radio.value === '결석') radio.parentElement.classList.add('bg-red-500', 'text-white');
+            radio.parentElement.classList.remove('text-gray-500', 'hover:bg-gray-200');
+        };
+
+        window.addStudent = async () => {
+            const nameInput = document.getElementById('newStudentName');
+            const name = nameInput.value.trim();
+            if (!name) { alert("학생 이름을 입력해주세요."); return; }
+
+            try {
+                await addDoc(collection(db, STUDENTS_COL), {
+                    school: currentSchool,
+                    name: name,
+                    createdAt: serverTimestamp()
+                });
+                nameInput.value = '';
+                alert(`${name} 학생이 추가되었습니다!`);
+                loadAttendanceData();
+            } catch (error) {
+                alert("추가 실패. 네트워크를 확인해주세요.");
+            }
+        };
+
+        window.saveAllAttendance = async () => {
+            const selectedDate = document.getElementById('attDate').value;
+            if (!selectedDate) return;
+
+            let saveCount = 0;
+            try {
+                for (const student of currentStudents) {
+                    const statusRadio = document.querySelector(`input[name="status_${student.id}"]:checked`);
+                    const memoInput = document.getElementById(`memo_${student.id}`);
+
+                    if (statusRadio) {
+                        const status = statusRadio.value;
+                        const memo = memoInput.value.trim();
+
+                        const docId = `${currentSchool}_${student.id}_${selectedDate}`;
+
+                        await setDoc(doc(db, ATTENDANCE_COL, docId), {
+                            school: currentSchool,
+                            studentId: student.id,
+                            date: selectedDate,
+                            status: status,
+                            memo: memo,
+                            updatedAt: serverTimestamp()
+                        });
+                        saveCount++;
+                    }
+                }
+                alert(`총 ${saveCount}명의 출석 정보가 저장되었습니다! 💾`);
+            } catch (error) {
+                console.error(error);
+                alert("저장 중 오류가 발생했습니다.");
+            }
+        };
+
+        window.toggleCustomDate = () => {
+            const period = document.getElementById('manPeriod').value;
+            const customDiv = document.getElementById('customDateContainer');
+            if (period === '기간지정') customDiv.classList.remove('hidden');
+            else customDiv.classList.add('hidden');
+        };
+
+        window.loadManageStudents = async () => {
+            const school = document.getElementById('manSchool').value;
+            const studentSelect = document.getElementById('manStudent');
+            studentSelect.innerHTML = '<option value="">학생을 불러오는 중...</option>';
+
+            if (!school) {
+                studentSelect.innerHTML = '<option value="">학생 선택 (학교를 먼저 선택하세요)</option>';
+                return;
+            }
+
+            try {
+                const q = query(collection(db, STUDENTS_COL), where("school", "==", school));
+                const snap = await getDocs(q);
+
+                let html = '<option value="">학생을 선택하세요</option>';
+                const students = [];
+                snap.forEach(doc => students.push({ id: doc.id, name: doc.data().name }));
+
+                students.sort((a, b) => a.name.localeCompare(b.name));
+                students.forEach(s => html += `<option value="${s.id}">${s.name}</option>`);
+
+                studentSelect.innerHTML = html;
+            } catch (e) {
+                studentSelect.innerHTML = '<option value="">불러오기 실패</option>';
+            }
+        };
+
+        function getDateRange(periodStr) {
+            const today = new Date();
+            let start, end;
+
+            if (periodStr === '이번주') {
+                const day = today.getDay();
+                const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+                start = new Date(today.setDate(diff));
+                end = new Date(start);
+                end.setDate(end.getDate() + 6);
+            } else if (periodStr === '이번달') {
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            } else if (periodStr === '올해') {
+                start = new Date(today.getFullYear(), 0, 1);
+                end = new Date(today.getFullYear(), 11, 31);
+            } else {
+                return {
+                    start: document.getElementById('manStartDate').value,
+                    end: document.getElementById('manEndDate').value
+                };
+            }
+
+            const offset = start.getTimezoneOffset() * 60000;
+            return {
+                start: (new Date(start - offset)).toISOString().split('T')[0],
+                end: (new Date(end - offset)).toISOString().split('T')[0]
+            };
+        }
+
+        window.searchAttendance = async () => {
+            const studentId = document.getElementById('manStudent').value;
+            const period = document.getElementById('manPeriod').value;
+            const memoContainer = document.getElementById('memoContainer');
+
+            if (!studentId) { alert("학생을 선택해주세요."); return; }
+
+            const range = getDateRange(period);
+            if (!range.start || !range.end) { alert("조회 기간을 정확히 입력해주세요."); return; }
+
+            document.getElementById('statContainer').classList.remove('hidden');
+            memoContainer.innerHTML = '<p class="text-center text-gray-400 text-sm mt-4"><i class="fas fa-spinner fa-spin"></i> 분석 중...</p>';
+
+            try {
+                const q = query(collection(db, ATTENDANCE_COL), where("studentId", "==", studentId));
+                const snap = await getDocs(q);
+
+                let present = 0, tardy = 0, absent = 0;
+                let memos = [];
+
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    if (data.date >= range.start && data.date <= range.end) {
+                        if (data.status === '출석') present++;
+                        if (data.status === '지각') tardy++;
+                        if (data.status === '결석') absent++;
+
+                        if (data.memo && data.memo.trim() !== '') {
+                            memos.push({ date: data.date, memo: data.memo, status: data.status });
+                        }
+                    }
+                });
+
+                document.getElementById('statPresent').innerText = present;
+                document.getElementById('statTardy').innerText = tardy;
+                document.getElementById('statAbsent').innerText = absent;
+
+                memos.sort((a, b) => b.date.localeCompare(a.date));
+
+                memoContainer.innerHTML = '';
+                if (memos.length > 0) {
+                    memos.forEach(m => {
+                        const statusColor = m.status === '출석' ? 'text-green-500' : (m.status === '지각' ? 'text-orange-500' : 'text-red-500');
+                        memoContainer.innerHTML += `
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex gap-3 items-start">
+                                <div class="bg-gray-50 text-gray-500 text-xs font-bold px-2 py-1 rounded-md shrink-0 border border-gray-200">${m.date}</div>
+                                <div>
+                                    <span class="text-[10px] font-bold ${statusColor} bg-white px-1.5 py-0.5 rounded border mb-1 inline-block">${m.status}</span>
+                                    <p class="text-sm text-gray-700 mt-1">${m.memo}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    memoContainer.innerHTML = '<div class="text-center text-gray-400 text-sm py-8 bg-white rounded-xl border border-gray-100 shadow-sm">이 기간에는 작성된 특이사항 메모가 없습니다.</div>';
+                }
+
+            } catch (error) {
+                console.error(error);
+                memoContainer.innerHTML = '<p class="text-center text-red-400 text-sm mt-4">데이터 조회에 실패했습니다.</p>';
+            }
+        };
+
+    </script>
+</body>
+
+</html>
